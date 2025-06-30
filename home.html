@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Canteen Menu Booking</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+    header {
+      background-color: #003366;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    #welcome-bar {
+      background: white;
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 15px 30px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #logout-btn {
+      padding: 6px 12px;
+      border: none;
+      background-color: #e74c3c;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #menu {
+      max-width: 1000px;
+      margin: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      padding: 30px;
+    }
+    .menu-item {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      position: relative;
+      transition: opacity 0.3s;
+    }
+    .menu-item.sold-out {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .availability {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 14px;
+      color: white;
+      user-select: none;
+    }
+    .available {
+      background-color: #28a745;
+    }
+    .sold-out-badge {
+      background-color: #dc3545;
+    }
+    /* Modal styles */
+    #modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    #modal {
+      background: white;
+      border-radius: 10px;
+      padding: 25px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    #modal-close {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #999;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: color 0.3s;
+    }
+    #modal-close:hover {
+      color: #333;
+    }
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: 600;
+      color: #444;
+    }
+    input[type=number], input[type=text] {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    #book-btn {
+      margin-top: 15px;
+      padding: 10px 20px;
+      font-size: 18px;
+      background-color: #003366;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+    #confirmation {
+      margin-top: 20px;
+      background-color: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 12px;
+      border-radius: 6px;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🍽️ Canteen Dashboard</h1>
+</header>
+
+<div id="welcome-bar">
+  <div id="welcome-text">Welcome, User (Role)</div>
+  <button id="logout-btn">Logout</button>
+</div>
+
+<div id="menu"></div>
+
+<!-- Modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <button id="modal-close">&times;</button>
+    <div id="modal-content">
+      <h2 id="modal-item-name"></h2>
+      <p><strong>Estimated Preparation Time:</strong> <span id="modal-preptime"></span> min</p>
+
+      <label for="quantity-input">Quantity:</label>
+      <input type="number" id="quantity-input" min="1" value="1" />
+
+      <label for="refcode-input">Reference Code (optional):</label>
+      <input type="text" id="refcode-input" placeholder="Enter reference code" />
+
+      <button id="book-btn">Book</button>
+
+      <div id="confirmation"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Sample user stored in localStorage (simulate login)
+  if (!localStorage.getItem('canteenUser')) {
+    localStorage.setItem('canteenUser', JSON.stringify({ name: "John Doe", role: "Customer" }));
+  }
+
+  const user = JSON.parse(localStorage.getItem('canteenUser'));
+
+  if (!user) {
+    // Redirect to login if user not found
+    window.location.href = "/login";
+  }
+
+  // Update welcome text
+  document.getElementById('welcome-text').textContent = `Welcome, ${user.name} (${user.role})`;
+
+  // Logout button clears user and redirects
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('canteenUser');
+    window.location.href = "/login";
+  });
+
+  // Menu items data
+  const menu = [
+    { id: 1, item: "Samosa", available: true, prepTime: 5 },
+    { id: 2, item: "Chicken Roll", available: false, prepTime: 10 },
+    { id: 3, item: "Pasta", available: true, prepTime: 15 },
+    { id: 4, item: "Idli", available: true, prepTime: 7 },
+    { id: 5, item: "Lemon Rice", available: false, prepTime: 12 },
+    { id: 6, item: "Egg Curry", available: true, prepTime: 20 }
+  ];
+
+  const menuContainer = document.getElementById('menu');
+
+  function createMenuItem(item) {
+    const div = document.createElement('div');
+    div.className = 'menu-item' + (item.available ? '' : ' sold-out');
+    div.innerHTML = `
+      <h3>${item.item}</h3>
+      <div class="availability ${item.available ? 'available' : 'sold-out-badge'}">
+        ${item.available ? 'Available' : 'Sold Out'}
+      </div>
+    `;
+
+    if (item.available) {
+      div.addEventListener('click', () => openModal(item));
+    }
+
+    return div;
+  }
+
+  function renderMenu() {
+    menuContainer.innerHTML = '';
+    menu.forEach(item => {
+      menuContainer.appendChild(createMenuItem(item));
+    });
+  }
+
+  renderMenu();
+
+  // Modal elements
+  const modalOverlay = document.getElementById('modal-overlay');
+  const modalCloseBtn = document.getElementById('modal-close');
+  const modalItemName = document.getElementById('modal-item-name');
+  const modalPrepTime = document.getElementById('modal-preptime');
+  const quantityInput = document.getElementById('quantity-input');
+  const refCodeInput = document.getElementById('refcode-input');
+  const bookBtn = document.getElementById('book-btn');
+  const confirmationDiv = document.getElementById('confirmation');
+
+  let currentBookingItem = null;
+
+  function openModal(item) {
+    currentBookingItem = item;
+    modalItemName.textContent = item.item;
+    modalPrepTime.textContent = item.prepTime;
+    quantityInput.value = 1;
+    refCodeInput.value = '';
+    confirmationDiv.textContent = '';
+    modalOverlay.style.display = 'flex';
+  }
+
+  function closeModal() {
+    modalOverlay.style.display = 'none';
+    currentBookingItem = null;
+  }
+
+  modalCloseBtn.addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeModal();
+  });
+
+  bookBtn.addEventListener('click', () => {
+    const quantity = parseInt(quantityInput.value);
+    if (!quantity || quantity < 1) {
+      alert("Please enter a valid quantity (1 or more).");
+      return;
+    }
+    const refCode = refCodeInput.value.trim();
+    const totalTime = currentBookingItem.prepTime * quantity;
+    let message = `Thank you! Your order for ${quantity} x ${currentBookingItem.item} is booked.\nEstimated preparation time: ${totalTime} min.`;
+    if (refCode !== '') {
+      message += `\nReference code: ${refCode}`;
+    }
+    confirmationDiv.textContent = message;
+  });
+</script>
+
+</body>
+</html>
